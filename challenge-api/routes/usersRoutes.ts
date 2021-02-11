@@ -14,7 +14,7 @@ export class UsersRoutes extends CommonRoutes {
 
         router.get(`/`,  [checkJwt], UsersController.getAllUsers);
 
-        router.post('/', [checkJwt], UsersController.createServerUser);
+        router.post('/', [], UsersController.createServerUser);
 
         router.get(`/me`,  [checkJwt], UsersController.getUserInfo);
 
