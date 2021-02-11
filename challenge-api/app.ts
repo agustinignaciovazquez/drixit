@@ -13,7 +13,7 @@ import {AuthRoutes} from "./routes/authRoutes";
 
 const app: express.Application = express();
 const server: http.Server = http.createServer(app);
-const port: Number = 3000;
+const port: Number = 3001;
 const router = Router();
 const routes: Array<CommonRoutes> = [];
 const debugLog: debug.IDebugger = debug('app');

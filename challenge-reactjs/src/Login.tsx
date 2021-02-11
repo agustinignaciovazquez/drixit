@@ -7,13 +7,15 @@ import CardContent from '@material-ui/core/CardContent';
 import CardActions from '@material-ui/core/CardActions';
 import CardHeader from '@material-ui/core/CardHeader';
 import Button from '@material-ui/core/Button';
+import {authenticationService} from "./_services/authenticationService";
+import { History, LocationState } from "history";
 
 const useStyles = makeStyles((theme: Theme) =>
     createStyles({
         container: {
-            display: 'flex',
+            //display: 'flex',
             flexWrap: 'wrap',
-            width: 400,
+            width: 500,
             margin: `${theme.spacing(0)} auto`
         },
         loginBtn: {
@@ -30,6 +32,11 @@ const useStyles = makeStyles((theme: Theme) =>
         }
     })
 );
+
+
+interface LoginProps {
+    history: History<LocationState>;
+}
 
 type State = {
     email: string,
@@ -55,6 +62,7 @@ type Action = {type: 'setEmail', payload: string} |
             {type: 'setPassword', payload: string} |
             {type: 'setIsMailValid', payload: boolean} |
             {type: 'setIsLoginSuccess', payload: boolean} |
+            {type: 'setIsButtonDisabled', payload: boolean} |
             {type: 'setIsError', payload: {isError: boolean, errorString: string}};
 
 const reducer = (state: State, action: Action): State => {
@@ -79,25 +87,91 @@ const reducer = (state: State, action: Action): State => {
                 ...state,
                 isLoginSuccess: action.payload
             };
+        case 'setIsButtonDisabled':
+            return {
+                ...state,
+                isButtonDisabled: action.payload
+            };
         case 'setIsError':
             return {
                 ...state,
                 isError: action.payload.isError,
                 errorString: action.payload.errorString
             };
+
     }
 }
 
-const Login = () => {
+const Login = (props: LoginProps) => {
     const classes = useStyles();
     const [state, dispatch] = useReducer(reducer,initialState);
 
-    const handleLogin = () => {
+    useEffect(()=>{
+        if(authenticationService.isLoggedIn())
+            props.history.push('/me');
+    }, [])
 
+    useEffect(() => {
+        if (state.isMailValid && state.password.trim()) {
+            dispatch({
+                type: 'setIsButtonDisabled',
+                payload: false
+            });
+        } else {
+            dispatch({
+                type: 'setIsButtonDisabled',
+                payload: true
+            });
+        }
+    }, [state.isMailValid, state.password]);
+
+    const handleLogin = () => {
+        authenticationService.login(state.email,state.password)
+            .then(jwt =>{
+                props.history.push('/me');
+            }).catch(err => {
+                dispatch({
+                    type: 'setIsError',
+                    payload: {isError: true, errorString: "Wrong email or password"}
+                });
+            });
     }
 
-    const handleKeyPress = (event: React.KeyboardEvent) => {
+    const checkEmailFormat = (email: String): boolean =>{
+        const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        return re.test(String(email).toLowerCase());
+    }
+
+    const dispatchEmailState = ():boolean => {
+        const isMailValid: boolean = checkEmailFormat(state.email);
+        const errorString: string = isMailValid? "" : "Invalid mail";
+
+        dispatch({
+            type: 'setIsMailValid',
+            payload: isMailValid
+        });
+
+        dispatch({
+            type: 'setIsError',
+            payload: {isError: !isMailValid, errorString: errorString}
+        });
+        return isMailValid;
+    }
+
+    const handleOnBlur = (event: React.FocusEvent<HTMLInputElement>) =>{
+        dispatchEmailState();
+    }
+
+    const handleEmailKeyPress = (event: React.KeyboardEvent) => {
         if (event.keyCode === 13 || event.which === 13) {
+            event.preventDefault();
+            dispatchEmailState() || state.isButtonDisabled || handleLogin();
+        }
+    };
+
+    const handlePasswordKeyPress = (event: React.KeyboardEvent) => {
+        if (event.keyCode === 13 || event.which === 13) {
+            event.preventDefault();
             state.isButtonDisabled || handleLogin();
         }
     };
@@ -132,20 +206,24 @@ const Login = () => {
                             label="Email"
                             placeholder="Email"
                             margin="normal"
+                            helperText={state.errorString}
                             onChange={handleEmailChange}
-                            onKeyPress={handleKeyPress}
+                            onKeyPress={handleEmailKeyPress}
+                            onBlur={handleOnBlur}
                         />
-                        <TextField
-                            error={state.isError}
-                            fullWidth
-                            id="password"
-                            type="password"
-                            label="Password"
-                            placeholder="Password"
-                            margin="normal"
-                            onChange={handlePasswordChange}
-                            onKeyPress={handleKeyPress}
-                        />
+                        {state.isMailValid &&
+                            <TextField
+                                error={state.isError}
+                                fullWidth
+                                id="password"
+                                type="password"
+                                label="Password"
+                                placeholder="Password"
+                                margin="normal"
+                                onChange={handlePasswordChange}
+                                onKeyPress={handlePasswordKeyPress}
+                            />
+                        }
                     </div>
                 </CardContent>
                 <CardActions>

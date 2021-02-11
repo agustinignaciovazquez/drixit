@@ -6,12 +6,14 @@ import {IUser} from "../persistence/schemas/user";
 
 class AuthController {
     private static instance: AuthController;
+
     static getInstance(): AuthController {
         if (!AuthController.instance) {
             AuthController.instance = new AuthController();
         }
         return AuthController.instance;
     }
+
     async login(req: Request, res: Response){
         //Check parameters
         let { email, password } = req.body;
